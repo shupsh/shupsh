@@ -103,7 +103,7 @@ sudo systemctl restart ssh
 # 6. Oh My Zsh & Cypher Theme
 echo "--- 🐚 Configuring ZSH (Cypher Theme) ---"
 # Ensure HOME is set for the target user so Oh My Zsh installs in the right place.
-sudo -u "$NEW_USER" -H sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || true
+sudo -u "$NEW_USER" env HOME="/home/$NEW_USER" USER="$NEW_USER" sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || true
 if [ -f "/home/$NEW_USER/.zshrc" ]; then
     if [ -z "$ZSH_THEME_CHOICE" ]; then
         sudo sed -i 's/ZSH_THEME=".*"/ZSH_THEME=""/' "/home/$NEW_USER/.zshrc"

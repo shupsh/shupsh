@@ -28,9 +28,9 @@ prompt_var() {
 
 prompt_var "Enter the domain/hostname for this VPS: " MY_DOMAIN
 prompt_var "Enter the username for the new sudo user: " NEW_USER
-prompt_var "Enter ZSH theme (default: cypher, use 'none' for no theme): " ZSH_THEME_CHOICE
+prompt_var "Enter ZSH theme (default: bira, use 'none' for no theme): " ZSH_THEME_CHOICE
 if [ -z "$ZSH_THEME_CHOICE" ]; then
-    ZSH_THEME_CHOICE="cypher"
+    ZSH_THEME_CHOICE="bira"
 elif [ "$ZSH_THEME_CHOICE" = "none" ]; then
     ZSH_THEME_CHOICE=""
 fi
@@ -105,60 +105,80 @@ sudo passwd -l root
 
 sudo systemctl restart ssh
 
-# 6. Oh My Zsh & Cypher Theme
-echo "--- 🐚 Configuring ZSH (Cypher Theme) ---"
-# Move to /tmp to avoid "can't cd to /root" error when running as $NEW_USER.
-# The installer script may fail if it starts in a directory the user cannot access.
+# 6. Oh My Zsh & ZSH Themes
+echo "--- 🐚 Configuring ZSH ---"
+# Move to /tmp to avoid "can't cd to /root" error when running as another user.
 cd /tmp
-# Ensure HOME is set for the target user so Oh My Zsh installs in the right place.
-# Using a pipe to sh avoids quoting issues with sh -c "$(curl ...)"
-sudo -u "$NEW_USER" env HOME="/home/$NEW_USER" USER="$NEW_USER" RUNZSH="$RUNZSH" CHSH="$CHSH" KEEP_ZSHRC="$KEEP_ZSHRC" \
-    sh -c 'curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh' || true
-if [ -f "/home/$NEW_USER/.zshrc" ]; then
-    if [ -z "$ZSH_THEME_CHOICE" ]; then
-        sudo sed -i 's/ZSH_THEME=".*"/ZSH_THEME=""/' "/home/$NEW_USER/.zshrc"
+
+# Function to configure Oh My Zsh for a user
+setup_omz() {
+    local target_user="$1"
+    local target_home="$2"
+
+    echo "Installing Oh My Zsh for $target_user..."
+    if [ "$target_user" = "root" ]; then
+        env HOME="$target_home" USER="$target_user" RUNZSH="$RUNZSH" CHSH="$CHSH" KEEP_ZSHRC="$KEEP_ZSHRC" \
+            sh -c 'curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh' || true
     else
-        sudo sed -i "s/ZSH_THEME=\".*\"/ZSH_THEME=\"$ZSH_THEME_CHOICE\"/" "/home/$NEW_USER/.zshrc"
+        sudo -u "$target_user" env HOME="$target_home" USER="$target_user" RUNZSH="$RUNZSH" CHSH="$CHSH" KEEP_ZSHRC="$KEEP_ZSHRC" \
+            sh -c 'curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh' || true
     fi
-    # Ensure plugins are defined before sourcing Oh My Zsh to avoid warnings.
-    if awk '/^source .*oh-my-zsh\.sh/{print NR; exit}' "/home/$NEW_USER/.zshrc" >/tmp/omz_source_line \
-        && awk '/^plugins=/{print NR; exit}' "/home/$NEW_USER/.zshrc" >/tmp/omz_plugins_line; then
-        SOURCE_LINE="$(cat /tmp/omz_source_line)"
-        PLUGINS_LINE="$(cat /tmp/omz_plugins_line)"
-        if [ -n "$SOURCE_LINE" ] && [ -n "$PLUGINS_LINE" ] && [ "$PLUGINS_LINE" -gt "$SOURCE_LINE" ]; then
-            awk '
-                /^plugins=/{plugins=$0; next}
-                /^source .*oh-my-zsh\.sh/{
-                    if (plugins != "") print plugins
-                    print
-                    next
-                }
-                {print}
-                END{if (plugins != "") print plugins}
-            ' "/home/$NEW_USER/.zshrc" | sudo tee "/home/$NEW_USER/.zshrc.tmp" >/dev/null
-            sudo mv "/home/$NEW_USER/.zshrc.tmp" "/home/$NEW_USER/.zshrc"
+
+    if [ -f "$target_home/.zshrc" ]; then
+        if [ -z "$ZSH_THEME_CHOICE" ]; then
+            sudo sed -i 's/ZSH_THEME=".*"/ZSH_THEME=""/' "$target_home/.zshrc"
+        else
+            sudo sed -i "s/ZSH_THEME=\".*\"/ZSH_THEME=\"$ZSH_THEME_CHOICE\"/" "$target_home/.zshrc"
         fi
-    fi
-else
-    sudo tee "/home/$NEW_USER/.zshrc" >/dev/null <<'EOF'
-export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME=""
+        
+        # Ensure plugins are defined before sourcing Oh My Zsh to avoid warnings.
+        if awk '/^source .*oh-my-zsh\.sh/{print NR; exit}' "$target_home/.zshrc" >/tmp/omz_source_line \
+            && awk '/^plugins=/{print NR; exit}' "$target_home/.zshrc" >/tmp/omz_plugins_line; then
+            SOURCE_LINE="$(cat /tmp/omz_source_line)"
+            PLUGINS_LINE="$(cat /tmp/omz_plugins_line)"
+            if [ -n "$SOURCE_LINE" ] && [ -n "$PLUGINS_LINE" ] && [ "$PLUGINS_LINE" -gt "$SOURCE_LINE" ]; then
+                awk '
+                    /^plugins=/{plugins=$0; next}
+                    /^source .*oh-my-zsh\.sh/{
+                        if (plugins != "") print plugins
+                        print
+                        next
+                    }
+                    {print}
+                    END{if (plugins != "") print plugins}
+                ' "$target_home/.zshrc" | sudo tee "$target_home/.zshrc.tmp" >/dev/null
+                sudo mv "$target_home/.zshrc.tmp" "$target_home/.zshrc"
+            fi
+        fi
+    else
+        cat <<EOF | sudo tee "$target_home/.zshrc" >/dev/null
+export ZSH="\$HOME/.oh-my-zsh"
+ZSH_THEME="$ZSH_THEME_CHOICE"
 plugins=(git)
 
-source "$ZSH/oh-my-zsh.sh"
+source "\$ZSH/oh-my-zsh.sh"
 EOF
-    if [ -n "$ZSH_THEME_CHOICE" ]; then
-        sudo sed -i "s/ZSH_THEME=\"\"/ZSH_THEME=\"$ZSH_THEME_CHOICE\"/" "/home/$NEW_USER/.zshrc"
     fi
-    sudo chown "$NEW_USER:$NEW_USER" "/home/$NEW_USER/.zshrc"
-fi
 
-# Add useful aliases
-cat <<EOF | sudo tee -a "/home/$NEW_USER/.zshrc"
+    # Add useful aliases
+    if ! grep -q "alias ll='ls -lah'" "$target_home/.zshrc"; then
+        cat <<EOF | sudo tee -a "$target_home/.zshrc" >/dev/null
+
 alias ll='ls -lah'
 alias update='sudo apt update && sudo apt upgrade -y'
 alias myip='curl ifconfig.me'
 EOF
+    fi
+    
+    sudo chown -R "$target_user:$target_user" "$target_home/.oh-my-zsh" || true
+    sudo chown "$target_user:$target_user" "$target_home/.zshrc" || true
+}
+
+# Setup for root
+setup_omz "root" "/root"
+
+# Setup for new user
+setup_omz "$NEW_USER" "/home/$NEW_USER"
 
 # 7. Security (UFW)
 echo "--- 🛡 Enabling Firewall ---"

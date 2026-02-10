@@ -28,7 +28,20 @@ echo ""
 # 2. Hostname Configuration
 echo "--- 🛠 Configuring Hostname ---"
 hostnamectl set-hostname "$MY_DOMAIN"
-echo "127.0.1.1 $MY_DOMAIN $(hostname -s)" | sudo tee -a /etc/hosts
+# Ensure hostname resolves locally even if DNS is not set up yet.
+if [ -w /etc/hosts ]; then
+    if grep -q '^127\.0\.1\.1' /etc/hosts; then
+        sed -i "s/^127\.0\.1\.1.*/127.0.1.1 $MY_DOMAIN $(hostname -s)/" /etc/hosts
+    else
+        echo "127.0.1.1 $MY_DOMAIN $(hostname -s)" >> /etc/hosts
+    fi
+else
+    if sudo grep -q '^127\.0\.1\.1' /etc/hosts; then
+        sudo sed -i "s/^127\.0\.1\.1.*/127.0.1.1 $MY_DOMAIN $(hostname -s)/" /etc/hosts
+    else
+        echo "127.0.1.1 $MY_DOMAIN $(hostname -s)" | sudo tee -a /etc/hosts >/dev/null
+    fi
+fi
 
 # 3. System Upgrade
 echo "--- 🔄 Upgrading Packages ---"
@@ -83,8 +96,13 @@ sudo systemctl restart ssh
 
 # 6. Oh My Zsh & Cypher Theme
 echo "--- 🐚 Configuring ZSH (Cypher Theme) ---"
-sudo -u "$NEW_USER" sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || true
-sudo sed -i 's/ZSH_THEME=".*"/ZSH_THEME="cypher"/' "/home/$NEW_USER/.zshrc"
+# Ensure HOME is set for the target user so Oh My Zsh installs in the right place.
+sudo -u "$NEW_USER" -H sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || true
+if [ -f "/home/$NEW_USER/.zshrc" ]; then
+    sudo sed -i 's/ZSH_THEME=".*"/ZSH_THEME="cypher"/' "/home/$NEW_USER/.zshrc"
+else
+    echo "WARN: /home/$NEW_USER/.zshrc not found, skipping theme setup."
+fi
 
 # Add useful aliases
 cat <<EOF | sudo tee -a "/home/$NEW_USER/.zshrc"

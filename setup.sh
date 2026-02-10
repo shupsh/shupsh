@@ -86,7 +86,9 @@ fi
 
 # Setup keys for the new user
 sudo mkdir -p "/home/$NEW_USER/.ssh"
-sudo cp /root/.ssh/authorized_keys "/home/$NEW_USER/.ssh/authorized_keys"
+if [ ! -s "/home/$NEW_USER/.ssh/authorized_keys" ]; then
+    sudo cp /root/.ssh/authorized_keys "/home/$NEW_USER/.ssh/authorized_keys"
+fi
 sudo chown -R "$NEW_USER:$NEW_USER" "/home/$NEW_USER/.ssh"
 sudo chmod 700 "/home/$NEW_USER/.ssh"
 sudo chmod 600 "/home/$NEW_USER/.ssh/authorized_keys"
@@ -95,10 +97,19 @@ sudo chmod 600 "/home/$NEW_USER/.ssh/authorized_keys"
 # 1. Disable password authentication
 # 2. Disable root password login (prohibit-password allows keys only)
 # 3. Disable empty passwords (even though we are using keys)
-sudo sed -i 's/#\{0,1\}PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
-sudo sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
-sudo sed -i 's/#\{0,1\}PermitRootLogin.*/PermitRootLogin prohibit-password/g' /etc/ssh/sshd_config
-sudo sed -i 's/#\{0,1\}PubkeyAuthentication.*/PubkeyAuthentication yes/g' /etc/ssh/sshd_config
+set_ssh_config() {
+    local param="$1"
+    local value="$2"
+    if grep -qE "^#?${param}[[:space:]]" /etc/ssh/sshd_config; then
+        sudo sed -i "s/^#\?${param}[[:space:]].*/${param} ${value}/" /etc/ssh/sshd_config
+    else
+        echo "${param} ${value}" | sudo tee -a /etc/ssh/sshd_config >/dev/null
+    fi
+}
+
+set_ssh_config "PasswordAuthentication" "no"
+set_ssh_config "PermitRootLogin" "prohibit-password"
+set_ssh_config "PubkeyAuthentication" "yes"
 
 # Lock root password (deletes password, keys still work)
 sudo passwd -l root
@@ -162,9 +173,10 @@ EOF
     fi
 
     # Add useful aliases
-    if ! grep -q "alias ll='ls -lah'" "$target_home/.zshrc"; then
+    if ! grep -q "# SLY.TEAM Aliases" "$target_home/.zshrc"; then
         cat <<EOF | sudo tee -a "$target_home/.zshrc" >/dev/null
 
+# SLY.TEAM Aliases
 alias ll='ls -lah'
 alias update='sudo apt update && sudo apt upgrade -y'
 alias myip='curl ifconfig.me'

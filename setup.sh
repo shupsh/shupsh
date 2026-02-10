@@ -3,6 +3,11 @@
 # Exit on error
 set -e
 
+# Default settings for Oh My Zsh installer
+RUNZSH=${RUNZSH:-no}
+CHSH=${CHSH:-no}
+KEEP_ZSHRC=${KEEP_ZSHRC:-yes}
+
 echo "Secure VPS setup starting..."
 echo "--- 🚀 Starting Secure VPS Preparation ---"
 
@@ -103,7 +108,7 @@ sudo systemctl restart ssh
 # 6. Oh My Zsh & Cypher Theme
 echo "--- 🐚 Configuring ZSH (Cypher Theme) ---"
 # Ensure HOME is set for the target user so Oh My Zsh installs in the right place.
-sudo -u "$NEW_USER" env HOME="/home/$NEW_USER" USER="$NEW_USER" RUNZSH=no CHSH=no KEEP_ZSHRC=yes \
+sudo -u "$NEW_USER" env HOME="/home/$NEW_USER" USER="$NEW_USER" RUNZSH="$RUNZSH" CHSH="$CHSH" KEEP_ZSHRC="$KEEP_ZSHRC" \
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || true
 if [ -f "/home/$NEW_USER/.zshrc" ]; then
     if [ -z "$ZSH_THEME_CHOICE" ]; then

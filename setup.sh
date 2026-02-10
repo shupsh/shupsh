@@ -107,9 +107,13 @@ sudo systemctl restart ssh
 
 # 6. Oh My Zsh & Cypher Theme
 echo "--- 🐚 Configuring ZSH (Cypher Theme) ---"
+# Move to /tmp to avoid "can't cd to /root" error when running as $NEW_USER.
+# The installer script may fail if it starts in a directory the user cannot access.
+cd /tmp
 # Ensure HOME is set for the target user so Oh My Zsh installs in the right place.
+# Using a pipe to sh avoids quoting issues with sh -c "$(curl ...)"
 sudo -u "$NEW_USER" env HOME="/home/$NEW_USER" USER="$NEW_USER" RUNZSH="$RUNZSH" CHSH="$CHSH" KEEP_ZSHRC="$KEEP_ZSHRC" \
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || true
+    sh -c 'curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh' || true
 if [ -f "/home/$NEW_USER/.zshrc" ]; then
     if [ -z "$ZSH_THEME_CHOICE" ]; then
         sudo sed -i 's/ZSH_THEME=".*"/ZSH_THEME=""/' "/home/$NEW_USER/.zshrc"

@@ -138,9 +138,9 @@ setup_omz() {
 
     if [ -f "$target_home/.zshrc" ]; then
         if [ -z "$theme" ]; then
-            sudo sed -i 's/ZSH_THEME=".*"/ZSH_THEME=""/' "$target_home/.zshrc"
+            sudo sed -i 's/^#\?ZSH_THEME=".*"/ZSH_THEME=""/' "$target_home/.zshrc"
         else
-            sudo sed -i "s/ZSH_THEME=\".*\"/ZSH_THEME=\"$theme\"/" "$target_home/.zshrc"
+            sudo sed -i "s/^#\?ZSH_THEME=\".*\"/ZSH_THEME=\"$theme\"/" "$target_home/.zshrc"
         fi
         
         # Ensure plugins are defined before sourcing Oh My Zsh to avoid warnings.
@@ -149,17 +149,9 @@ setup_omz() {
             SOURCE_LINE="$(cat /tmp/omz_source_line)"
             PLUGINS_LINE="$(cat /tmp/omz_plugins_line)"
             if [ -n "$SOURCE_LINE" ] && [ -n "$PLUGINS_LINE" ] && [ "$PLUGINS_LINE" -gt "$SOURCE_LINE" ]; then
-                awk '
-                    /^plugins=/{plugins=$0; next}
-                    /^source .*oh-my-zsh\.sh/{
-                        if (plugins != "") print plugins
-                        print
-                        next
-                    }
-                    {print}
-                    END{if (plugins != "") print plugins}
-                ' "$target_home/.zshrc" | sudo tee "$target_home/.zshrc.tmp" >/dev/null
-                sudo mv "$target_home/.zshrc.tmp" "$target_home/.zshrc"
+                PLUGINS_CONTENT=$(grep "^plugins=" "$target_home/.zshrc" | tail -n 1)
+                sudo sed -i "/^plugins=/d" "$target_home/.zshrc"
+                sudo sed -i "/^source .*oh-my-zsh\.sh/i $PLUGINS_CONTENT" "$target_home/.zshrc"
             fi
         fi
     else
@@ -185,6 +177,12 @@ EOF
     
     sudo chown -R "$target_user:$target_user" "$target_home/.oh-my-zsh" || true
     sudo chown "$target_user:$target_user" "$target_home/.zshrc" || true
+
+    # Set zsh as default shell for the user
+    ZSH_PATH=$(which zsh)
+    if [ -n "$ZSH_PATH" ]; then
+        sudo chsh -s "$ZSH_PATH" "$target_user"
+    fi
 }
 
 # Setup for root

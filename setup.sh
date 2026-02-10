@@ -6,8 +6,22 @@ set -e
 echo "--- 🚀 Starting Secure VPS Preparation ---"
 
 # 1. Gather Information
-read -p "Enter the domain/hostname for this VPS: " MY_DOMAIN
-read -p "Enter the username for the new sudo user: " NEW_USER
+prompt_var() {
+    local prompt="$1"
+    local __var_name="$2"
+
+    if [ -t 0 ]; then
+        read -r -p "$prompt" "$__var_name"
+    elif [ -t 1 ] && [ -e /dev/tty ]; then
+        read -r -p "$prompt" "$__var_name" </dev/tty
+    else
+        echo "ERROR: No TTY available for prompts. Run this script in an interactive shell." >&2
+        exit 1
+    fi
+}
+
+prompt_var "Enter the domain/hostname for this VPS: " MY_DOMAIN
+prompt_var "Enter the username for the new sudo user: " NEW_USER
 echo ""
 
 # 2. Hostname Configuration

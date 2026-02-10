@@ -103,12 +103,32 @@ sudo systemctl restart ssh
 # 6. Oh My Zsh & Cypher Theme
 echo "--- 🐚 Configuring ZSH (Cypher Theme) ---"
 # Ensure HOME is set for the target user so Oh My Zsh installs in the right place.
-sudo -u "$NEW_USER" env HOME="/home/$NEW_USER" USER="$NEW_USER" sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || true
+sudo -u "$NEW_USER" env HOME="/home/$NEW_USER" USER="$NEW_USER" RUNZSH=no CHSH=no KEEP_ZSHRC=yes \
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" || true
 if [ -f "/home/$NEW_USER/.zshrc" ]; then
     if [ -z "$ZSH_THEME_CHOICE" ]; then
         sudo sed -i 's/ZSH_THEME=".*"/ZSH_THEME=""/' "/home/$NEW_USER/.zshrc"
     else
         sudo sed -i "s/ZSH_THEME=\".*\"/ZSH_THEME=\"$ZSH_THEME_CHOICE\"/" "/home/$NEW_USER/.zshrc"
+    fi
+    # Ensure plugins are defined before sourcing Oh My Zsh to avoid warnings.
+    if awk '/^source .*oh-my-zsh\.sh/{print NR; exit}' "/home/$NEW_USER/.zshrc" >/tmp/omz_source_line \
+        && awk '/^plugins=/{print NR; exit}' "/home/$NEW_USER/.zshrc" >/tmp/omz_plugins_line; then
+        SOURCE_LINE="$(cat /tmp/omz_source_line)"
+        PLUGINS_LINE="$(cat /tmp/omz_plugins_line)"
+        if [ -n "$SOURCE_LINE" ] && [ -n "$PLUGINS_LINE" ] && [ "$PLUGINS_LINE" -gt "$SOURCE_LINE" ]; then
+            awk '
+                /^plugins=/{plugins=$0; next}
+                /^source .*oh-my-zsh\.sh/{
+                    if (plugins != "") print plugins
+                    print
+                    next
+                }
+                {print}
+                END{if (plugins != "") print plugins}
+            ' "/home/$NEW_USER/.zshrc" | sudo tee "/home/$NEW_USER/.zshrc.tmp" >/dev/null
+            sudo mv "/home/$NEW_USER/.zshrc.tmp" "/home/$NEW_USER/.zshrc"
+        fi
     fi
 else
     sudo tee "/home/$NEW_USER/.zshrc" >/dev/null <<'EOF'

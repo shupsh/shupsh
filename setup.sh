@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Memo: Prepares a fresh VPS (hostname, user, SSH hardening, packages, UFW).
 # Exit on error
 set -e
 

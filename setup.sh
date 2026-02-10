@@ -57,8 +57,10 @@ fi
 # 3. System Upgrade
 echo "--- 🔄 Upgrading Packages ---"
 export DEBIAN_FRONTEND=noninteractive
-sudo apt-get update && sudo apt-get upgrade -y
-sudo apt-get install -y zsh curl git ufw fail2ban htop wget chrony
+# Suppress Python 3.12 syntax warnings during installation
+export PYTHONWARNINGS=ignore
+sudo -E apt-get update && sudo -E apt-get upgrade -y
+sudo -E apt-get install -y zsh curl git ufw fail2ban htop wget chrony
 
 # 4. User Creation & Passwordless Sudo
 echo "--- 👤 Setting up User: $NEW_USER ---"

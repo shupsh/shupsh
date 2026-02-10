@@ -1,8 +1,10 @@
 #!/bin/bash
 
+# Memo: Prepares a fresh VPS (hostname, user, SSH hardening, packages, UFW).
 # Exit on error
 set -e
 
+echo "Secure VPS setup starting..."
 echo "--- 🚀 Starting Secure VPS Preparation ---"
 
 # 1. Gather Information

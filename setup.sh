@@ -28,9 +28,9 @@ prompt_var() {
 
 prompt_var "Enter the domain/hostname for this VPS: " MY_DOMAIN
 prompt_var "Enter the username for the new sudo user: " NEW_USER
-prompt_var "Enter ZSH theme (default: bira, use 'none' for no theme): " ZSH_THEME_CHOICE
+prompt_var "Enter ZSH theme (default: cypher, use 'none' for no theme): " ZSH_THEME_CHOICE
 if [ -z "$ZSH_THEME_CHOICE" ]; then
-    ZSH_THEME_CHOICE="bira"
+    ZSH_THEME_CHOICE="cypher"
 elif [ "$ZSH_THEME_CHOICE" = "none" ]; then
     ZSH_THEME_CHOICE=""
 fi
@@ -114,6 +114,7 @@ cd /tmp
 setup_omz() {
     local target_user="$1"
     local target_home="$2"
+    local theme="$3"
 
     echo "Installing Oh My Zsh for $target_user..."
     if [ "$target_user" = "root" ]; then
@@ -125,10 +126,10 @@ setup_omz() {
     fi
 
     if [ -f "$target_home/.zshrc" ]; then
-        if [ -z "$ZSH_THEME_CHOICE" ]; then
+        if [ -z "$theme" ]; then
             sudo sed -i 's/ZSH_THEME=".*"/ZSH_THEME=""/' "$target_home/.zshrc"
         else
-            sudo sed -i "s/ZSH_THEME=\".*\"/ZSH_THEME=\"$ZSH_THEME_CHOICE\"/" "$target_home/.zshrc"
+            sudo sed -i "s/ZSH_THEME=\".*\"/ZSH_THEME=\"$theme\"/" "$target_home/.zshrc"
         fi
         
         # Ensure plugins are defined before sourcing Oh My Zsh to avoid warnings.
@@ -153,7 +154,7 @@ setup_omz() {
     else
         cat <<EOF | sudo tee "$target_home/.zshrc" >/dev/null
 export ZSH="\$HOME/.oh-my-zsh"
-ZSH_THEME="$ZSH_THEME_CHOICE"
+ZSH_THEME="$theme"
 plugins=(git)
 
 source "\$ZSH/oh-my-zsh.sh"
@@ -175,10 +176,10 @@ EOF
 }
 
 # Setup for root
-setup_omz "root" "/root"
+setup_omz "root" "/root" "bira"
 
 # Setup for new user
-setup_omz "$NEW_USER" "/home/$NEW_USER"
+setup_omz "$NEW_USER" "/home/$NEW_USER" "$ZSH_THEME_CHOICE"
 
 # 7. Security (UFW)
 echo "--- 🛡 Enabling Firewall ---"

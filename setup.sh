@@ -23,6 +23,12 @@ prompt_var() {
 
 prompt_var "Enter the domain/hostname for this VPS: " MY_DOMAIN
 prompt_var "Enter the username for the new sudo user: " NEW_USER
+prompt_var "Enter ZSH theme (default: cypher, use 'none' for no theme): " ZSH_THEME_CHOICE
+if [ -z "$ZSH_THEME_CHOICE" ]; then
+    ZSH_THEME_CHOICE="cypher"
+elif [ "$ZSH_THEME_CHOICE" = "none" ]; then
+    ZSH_THEME_CHOICE=""
+fi
 echo ""
 
 # 2. Hostname Configuration
@@ -99,9 +105,23 @@ echo "--- 🐚 Configuring ZSH (Cypher Theme) ---"
 # Ensure HOME is set for the target user so Oh My Zsh installs in the right place.
 sudo -u "$NEW_USER" -H sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || true
 if [ -f "/home/$NEW_USER/.zshrc" ]; then
-    sudo sed -i 's/ZSH_THEME=".*"/ZSH_THEME="cypher"/' "/home/$NEW_USER/.zshrc"
+    if [ -z "$ZSH_THEME_CHOICE" ]; then
+        sudo sed -i 's/ZSH_THEME=".*"/ZSH_THEME=""/' "/home/$NEW_USER/.zshrc"
+    else
+        sudo sed -i "s/ZSH_THEME=\".*\"/ZSH_THEME=\"$ZSH_THEME_CHOICE\"/" "/home/$NEW_USER/.zshrc"
+    fi
 else
-    echo "WARN: /home/$NEW_USER/.zshrc not found, skipping theme setup."
+    sudo tee "/home/$NEW_USER/.zshrc" >/dev/null <<'EOF'
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME=""
+plugins=(git)
+
+source "$ZSH/oh-my-zsh.sh"
+EOF
+    if [ -n "$ZSH_THEME_CHOICE" ]; then
+        sudo sed -i "s/ZSH_THEME=\"\"/ZSH_THEME=\"$ZSH_THEME_CHOICE\"/" "/home/$NEW_USER/.zshrc"
+    fi
+    sudo chown "$NEW_USER:$NEW_USER" "/home/$NEW_USER/.zshrc"
 fi
 
 # Add useful aliases

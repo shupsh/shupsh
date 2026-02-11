@@ -112,6 +112,8 @@ set_ssh_config() {
 set_ssh_config "PasswordAuthentication" "no"
 set_ssh_config "PermitRootLogin" "prohibit-password"
 set_ssh_config "PubkeyAuthentication" "yes"
+set_ssh_config "ClientAliveInterval" "60"
+set_ssh_config "ClientAliveCountMax" "3"
 
 # Lock root password (deletes password, keys still work)
 sudo passwd -l root

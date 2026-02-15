@@ -203,7 +203,7 @@ echo "Configuring database $DB_NAME and user $DB_USER..."
 # Wait for PostgreSQL to actually start responding to connections
 MAX_RETRIES=30
 RETRY_COUNT=0
-until kubectl exec -i deployment/postgres -n $POSTGRES_NS -- psql -U postgres -c "SELECT 1" > /dev/null 2>&1 || [ $RETRY_COUNT -eq $MAX_RETRIES ]; do
+until kubectl exec deployment/postgres -n $POSTGRES_NS -- psql -U postgres -c "SELECT 1" > /dev/null 2>&1 || [ $RETRY_COUNT -eq $MAX_RETRIES ]; do
     echo "Waiting for PostgreSQL to be ready to accept connections... ($((RETRY_COUNT+1))/$MAX_RETRIES)"
     sleep 2
     RETRY_COUNT=$((RETRY_COUNT+1))

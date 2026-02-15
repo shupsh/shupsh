@@ -7,6 +7,20 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+prompt_var() {
+    local prompt="$1"
+    local __var_name="$2"
+
+    if [ -t 0 ]; then
+        read -r -p "$prompt" "$__var_name"
+    elif [ -t 1 ] && [ -e /dev/tty ]; then
+        read -r -p "$prompt" "$__var_name" </dev/tty
+    else
+        echo "ERROR: No TTY available for prompts. Run this script in an interactive shell." >&2
+        exit 1
+    fi
+}
+
 echo -e "${GREEN}=== K3S + Postgres + SSL Automation Setup ===${NC}"
 
 # 1. Detect External IP
@@ -14,12 +28,12 @@ SERVER_IP=$(curl -4 -s ifconfig.me)
 echo -e "${GREEN}Current Server IP: ${SERVER_IP}${NC}"
 
 # 2. Request User Input
-read -p "Enter your domain (e.g., domain.com): " DOMAIN
-read -p "Enter your email for Let's Encrypt: " EMAIL
+prompt_var "Enter your domain (e.g., domain.com): " DOMAIN
+prompt_var "Enter your email for Let's Encrypt: " EMAIL
 echo -e "\n${GREEN}--- Database Configuration ---${NC}"
-read -p "Enter DB Name (e.g., backend-prod): " DB_NAME
-read -p "Enter DB Username: " DB_USER
-read -p "Enter DB Password (leave blank for auto-generate): " DB_PASS
+prompt_var "Enter DB Name (e.g., backend-prod): " DB_NAME
+prompt_var "Enter DB Username: " DB_USER
+prompt_var "Enter DB Password (leave blank for auto-generate): " DB_PASS
 
 # Auto-generate password if empty
 if [ -z "$DB_PASS" ]; then

@@ -165,6 +165,7 @@ spec:
       containers:
       - name: postgres
         image: timescale/timescaledb:latest-pg15
+        args: ["-c", "shared_preload_libraries=timescaledb"]
         env:
         - name: POSTGRES_PASSWORD
           valueFrom:

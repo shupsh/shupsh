@@ -21,7 +21,7 @@ prompt_var() {
     fi
 }
 
-echo -e "${GREEN}=== K3S + Postgres + SSL Automation Setup ===${NC}"
+echo -e "${GREEN}=== K3S + Postgres (TimescaleDB) + SSL Automation Setup ===${NC}"
 
 # 1. Detect External IP
 SERVER_IP=$(curl -4 -s ifconfig.me)
@@ -124,7 +124,7 @@ spec:
           class: nginx
 EOF
 
-# 9. Deploy PostgreSQL 15
+# 9. Deploy PostgreSQL 15 + TimescaleDB
 POSTGRES_NS="postgres"
 kubectl create namespace $POSTGRES_NS --dry-run=client -o yaml | kubectl apply -f -
 
@@ -164,7 +164,7 @@ spec:
     spec:
       containers:
       - name: postgres
-        image: postgres:15
+        image: timescale/timescaledb:latest-pg15
         env:
         - name: POSTGRES_PASSWORD
           valueFrom:
@@ -229,6 +229,7 @@ SELECT 'CREATE DATABASE $DB_NAME' WHERE NOT EXISTS (SELECT FROM pg_database WHER
 \c $DB_NAME
 ALTER SCHEMA public OWNER TO $DB_USER;
 GRANT ALL ON SCHEMA public TO $DB_USER;
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 EOF
 
 # 11. Deploy Temporary Application (hello-k8s)

@@ -217,11 +217,6 @@ fi
 
 # Execute as superuser 'postgres' to create the custom user and database idempotently
 kubectl exec -i deployment/postgres -n $POSTGRES_NS -- psql -U postgres <<EOF
--- Silencing collation version warnings for 'postgres' database
-SELECT 'ALTER COLLATION ' || quote_ident(n.nspname) || '.' || quote_ident(c.collname) || ' REFRESH VERSION'
-FROM pg_collation c JOIN pg_namespace n ON n.oid = c.collnamespace
-WHERE n.nspname <> 'pg_toast' \gexec
-
 DO \$\$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '$DB_USER') THEN
@@ -233,11 +228,6 @@ END
 \$\$;
 SELECT 'CREATE DATABASE $DB_NAME' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME')\gexec
 \c $DB_NAME
--- Silencing collation version warnings for '$DB_NAME' database
-SELECT 'ALTER COLLATION ' || quote_ident(n.nspname) || '.' || quote_ident(c.collname) || ' REFRESH VERSION'
-FROM pg_collation c JOIN pg_namespace n ON n.oid = c.collnamespace
-WHERE n.nspname <> 'pg_toast' \gexec
-
 ALTER SCHEMA public OWNER TO $DB_USER;
 GRANT ALL ON SCHEMA public TO $DB_USER;
 CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
